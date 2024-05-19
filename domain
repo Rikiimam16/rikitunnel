@@ -1,0 +1,96 @@
+#!/bin/bash
+apt install jq curl -y
+
+# Membaca input nama depan dari pengguna
+read -p "Masukkan nama depan untuk subdomain: " nama_depan
+
+# Membaca input IP VPS dari pengguna
+read -p "Masukkan IP VPS: " IP
+
+# Menampilkan menu pilihan domain
+echo "Pilih domain:"
+echo "1. mypremium.biz.id"
+echo "2. klmpk.me"
+echo "3. klmpk.my.id"
+echo "4. vipme.my.id"
+echo "5. klmpk-tunneling.my.id"
+echo "6. vpn-store.my.id"
+echo "7. klmpk.cfd"
+echo "8. server-tunneling.tech"
+
+# Membaca input pilihan dari pengguna
+read -p "Masukkan nomor domain yang ingin digunakan (1-8): " domain_option
+
+# Menentukan nama domain berdasarkan pilihan pengguna
+case $domain_option in
+    1)
+        DOMAIN="mypremium.biz.id"
+        ;;
+    2)
+        DOMAIN="klmpk.me"
+        ;;
+    3)
+        DOMAIN="klmpk.my.id"
+        ;;
+    4)
+        DOMAIN="vipme.my.id"
+        ;;
+    5)
+        DOMAIN="klmpk-tunneling.my.id"
+        ;;
+    6)
+        DOMAIN="vpn-store.my.id"
+        ;;      
+    7)
+        DOMAIN="klmpk.cfd"
+        ;;
+    8)
+        DOMAIN="server-tunneling.tech"
+        ;;                  
+    *)
+        echo "Pilihan tidak valid. Keluar."
+        exit 1
+        ;;
+esac
+
+# Menggabungkan nama depan dengan domain
+dns=${nama_depan}.${DOMAIN}
+
+CF_ID=andyyuda41@gmail.com
+CF_KEY=0d626234700bad388d6d07b49c42901445d1c
+
+set -euo pipefail
+
+echo "Updating DNS for ${dns}..."
+
+ZONE=$(curl -sLX GET "https://api.cloudflare.com/client/v4/zones?name=${DOMAIN}&status=active" \
+     -H "X-Auth-Email: ${CF_ID}" \
+     -H "X-Auth-Key: ${CF_KEY}" \
+     -H "Content-Type: application/json" | jq -r .result[0].id)
+
+RECORD=$(curl -sLX GET "https://api.cloudflare.com/client/v4/zones/${ZONE}/dns_records?name=${dns}" \
+     -H "X-Auth-Email: ${CF_ID}" \
+     -H "X-Auth-Key: ${CF_KEY}" \
+     -H "Content-Type: application/json" | jq -r .result[0].id)
+
+if [[ "${#RECORD}" -le 10 ]]; then
+     RECORD=$(curl -sLX POST "https://api.cloudflare.com/client/v4/zones/${ZONE}/dns_records" \
+     -H "X-Auth-Email: ${CF_ID}" \
+     -H "X-Auth-Key: ${CF_KEY}" \
+     -H "Content-Type: application/json" \
+     --data '{"type":"A","name":"'${dns}'","content":"'${IP}'","ttl":120,"proxied":false}' | jq -r .result.id)
+fi
+
+RESULT=$(curl -sLX PUT "https://api.cloudflare.com/client/v4/zones/${ZONE}/dns_records/${RECORD}" \
+     -H "X-Auth-Email: ${CF_ID}" \
+     -H "X-Auth-Key: ${CF_KEY}" \
+     -H "Content-Type: application/json" \
+     --data '{"type":"A","name":"'${dns}'","content":"'${IP}'","ttl":120,"proxied":false}')
+
+# Menampilkan pesan sukses dalam bentuk kolom
+echo "----------------------"
+echo "Sukses!"
+echo "----------------------"
+echo "Domain : ${dns}"
+echo "IP VPS : ${IP}"
+echo "----------------------"
